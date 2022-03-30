@@ -27,10 +27,20 @@ class NoteGraphic extends FNFSprite
 	public static var swagWidth:Float = 160 * 0.7;
 	public var quantTexture:Int = 4;
 	public var noteAngles:Array<Float>=[0,0,0,0];
+	public var noteOffsets:Array<Array<Null<Float>>> = [
+		[0,0],
+		[0,0],
+		[0,0],
+		[0,0]
+	];
+
 	public var scaleDefault:FlxPoint;
 	public var baseAngle:Float = 0;
 	public var modAngle:Float = 0;
 	public var graphicDir:Int=0;
+
+	public var skinXOffset:Float = 0;
+	public var skinYOffset:Float = 0;
 
 	public var quantToGrid:Map<Int,Int>=[
 		4=>0,
@@ -91,10 +101,25 @@ class NoteGraphic extends FNFSprite
 						animation.add('blueScroll', [behaviour.arguments.note.down+4*quantToGrid.get(quantTexture)]);
 						animation.add('purpleScroll', [behaviour.arguments.note.left+4*quantToGrid.get(quantTexture)]);
 					}else{
-						animation.add('greenScroll', index.up);
-						animation.add('redScroll', index.right);
-						animation.add('blueScroll', index.down);
-						animation.add('purpleScroll', index.left);
+						var offset:Int = index.offset;
+						var left:Array<Int> = [];
+						var up:Array<Int> = [];
+						var right:Array<Int> = [];
+						var down:Array<Int> = [];
+
+						var leftA:Array<Int> =index.left;
+						var upA:Array<Int> =index.up;
+						var rightA:Array<Int> =index.right;
+						var downA:Array<Int> = index.down;
+						for(i in leftA)left.push(i+offset);
+						for(i in upA)up.push(i+offset);
+						for(i in rightA)right.push(i+offset);
+						for(i in downA)down.push(i+offset);
+						animation.add('purpleScroll', left);
+						animation.add('greenScroll', up);
+						animation.add('redScroll', right);
+						animation.add('blueScroll', down);
+
 					}
 				}else{
 					animation.add('greenScroll', behaviour.arguments.note.up );
@@ -111,6 +136,19 @@ class NoteGraphic extends FNFSprite
 						noteAngles[i]=angle;
 					}else{
 						noteAngles[i]=0;
+					}
+					var xOffset:Null<Float>= Reflect.field(behaviour.arguments.note,'${dir}xOffset');
+					if(xOffset!=null){
+						noteOffsets[i][0]=xOffset;
+					}else{
+						noteOffsets[i][0]=0;
+					}
+
+					var yOffset:Null<Float>= Reflect.field(behaviour.arguments.note,'${dir}yOffset');
+					if(yOffset!=null){
+						noteOffsets[i][0]=yOffset;
+					}else{
+						noteOffsets[i][0]=0;
 					}
 				}
 
@@ -166,6 +204,7 @@ class NoteGraphic extends FNFSprite
 						animation.addByPrefix('${colors[i]}roll', rollPrefix);
 						animation.addByPrefix('${colors[i]}rollend', rollEndPrefix);
 						noteAngles[i] = dirData.angle;
+						noteOffsets[i] = [dirData.xOffset==null?0:dirData.xOffset,dirData.yOffset==null?0:dirData.yOffset];
 					}
 				}else{
 					animation.addByPrefix('greenScroll', args.up.prefix);
@@ -197,6 +236,11 @@ class NoteGraphic extends FNFSprite
 					noteAngles[1] = args.down.angle;
 					noteAngles[2] = args.up.angle;
 					noteAngles[3] = args.right.angle;
+
+					noteOffsets[0] = [args.left.xOffset==null?0:args.left.xOffset,args.left.yOffset==null?0:args.left.yOffset];
+					noteOffsets[1] = [args.down.xOffset==null?0:args.down.xOffset,args.down.yOffset==null?0:args.down.yOffset];
+					noteOffsets[2] = [args.up.xOffset==null?0:args.up.xOffset,args.up.yOffset==null?0:args.up.yOffset];
+					noteOffsets[3] = [args.right.xOffset==null?0:args.right.xOffset,args.right.yOffset==null?0:args.right.yOffset];
 				}
 
 				if(setSize){
@@ -236,13 +280,20 @@ class NoteGraphic extends FNFSprite
 					loadGraphic(Paths.noteSkinImage(args.sheet, 'skins', skin, modifier, graphicType),true,args.gridSizeX,args.gridSizeY);
 					// TODO: quantsz
 					if(args.quant){
-						var index = Reflect.field(args,quantToIndex.get(quantTexture) );
+						var index:Array<Int>  = Reflect.field(args,quantToIndex.get(quantTexture) );
 						var gridIndex=quantToGrid.get(quantTexture);
+
+						var offset:Int = args.offset;
+
+
 						if(index!=null){
-							animation.add('purple${suffix}', index);
-							animation.add('green${suffix}', index);
-							animation.add('red${suffix}', index);
-							animation.add('blue${suffix}', index);
+							var shit:Array<Int> = [];
+							for(i in index)shit.push(i+offset);
+
+							animation.add('purple${suffix}', shit);
+							animation.add('green${suffix}', shit);
+							animation.add('red${suffix}', shit);
+							animation.add('blue${suffix}', shit);
 						}else{
 							gridIndex+=9;
 							animation.add('purple${suffix}', [gridIndex]);
@@ -284,7 +335,9 @@ class NoteGraphic extends FNFSprite
 					if(args.quant){
 						var index = Reflect.field(args,quantToIndex.get(quantTexture) );
 						var gridIndex=quantToGrid.get(quantTexture);
+						var offset:Int = args.offset;
 						if(index!=null){
+
 							animation.add('purple${suffix}', index);
 							animation.add('green${suffix}', index);
 							animation.add('red${suffix}', index);
@@ -318,10 +371,24 @@ class NoteGraphic extends FNFSprite
 					animation.add('blueScroll', [behaviour.arguments.note.down+addition]);
 					animation.add('purpleScroll', [behaviour.arguments.note.left+addition]);
 				}else{
-					animation.add('greenScroll', index.up);
-					animation.add('redScroll', index.right);
-					animation.add('blueScroll', index.down);
-					animation.add('purpleScroll', index.left);
+					var offset:Int = index.offset;
+					var left:Array<Int> = [];
+					var up:Array<Int> = [];
+					var right:Array<Int> = [];
+					var down:Array<Int> = [];
+
+					var leftA:Array<Int> =index.left;
+					var upA:Array<Int> =index.up;
+					var rightA:Array<Int> =index.right;
+					var downA:Array<Int> = index.down;
+					for(i in leftA)left.push(i+offset);
+					for(i in upA)up.push(i+offset);
+					for(i in rightA)right.push(i+offset);
+					for(i in downA)down.push(i+offset);
+					animation.add('purpleScroll', left);
+					animation.add('greenScroll', up);
+					animation.add('redScroll', right);
+					animation.add('blueScroll', down);
 				}
 			}else{
 				animation.add('greenScroll', behaviour.arguments.note.up );
@@ -339,6 +406,20 @@ class NoteGraphic extends FNFSprite
 				}else{
 					noteAngles[i]=0;
 				}
+
+				var xOffset:Null<Float>= Reflect.field(behaviour.arguments.note,'${dir}xOffset');
+				if(xOffset!=null){
+					noteOffsets[i][0]=xOffset;
+				}else{
+					noteOffsets[i][0]=0;
+				}
+
+				var yOffset:Null<Float>= Reflect.field(behaviour.arguments.note,'${dir}yOffset');
+				if(yOffset!=null){
+					noteOffsets[i][0]=yOffset;
+				}else{
+					noteOffsets[i][0]=0;
+				}
 			}
 
 			setGraphicSize(Std.int(width * behaviour.scale));
@@ -347,6 +428,10 @@ class NoteGraphic extends FNFSprite
 		}
 
 		graphicDir=dir;
+
+		skinXOffset = noteOffsets[dir][0];
+		skinYOffset = noteOffsets[dir][1];
+
 
 		if(colors[dir]!=null){
 			animation.play('${colors[dir]}${suffix}',true);

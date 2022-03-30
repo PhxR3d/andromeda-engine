@@ -644,7 +644,12 @@ class PlayState extends MusicBeatState
 			if(section.events!=null){
 				section.events.sort((a,b)->Std.int(a.time-b.time));
 				for(event in section.events){
-					eventPreInit(event);
+					if(event.events!=null){
+						for(ev in event.events)
+							eventPreInit(ev);
+
+					}else
+						eventPreInit(event);
 				}
 			}
 		}
@@ -1296,6 +1301,15 @@ class PlayState extends MusicBeatState
 		modManager.setReceptors();
 		modManager.registerModifiers();
 
+		var toRemove:Array<Section.Event> = [];
+		for(event in eventSchedule){
+			var shouldKeep = eventPostInit(event);
+			trace(event);
+			if(!shouldKeep)toRemove.push(event);
+		}
+		for(shit in toRemove)
+			eventSchedule.remove(shit);
+
 		if(!forceDisableModchart){
 			#if FORCE_LUA_MODCHARTS
 			setupLuaSystem();
@@ -1531,14 +1545,9 @@ class PlayState extends MusicBeatState
 		}
 	}
 
-	function eventInit(event: Event):Bool
+	function eventPostInit(event: Event):Bool
 	{
 		switch(event.name){
-			case 'Change Character':
-				var cache = new Character(-9000, -9000, event.args[1], event.args[0]=='bf');
-				cache.alpha=1/9999;
-				add(cache);
-				remove(cache);
 			case 'Set Modifier':
 				var step = Conductor.getStep(event.time);
 				var player:Int = 0;
@@ -1565,6 +1574,20 @@ class PlayState extends MusicBeatState
 				}
 				modManager.queueEase(step, step+event.args[2], event.args[0], event.args[1], event.args[3], player);
 				return false;
+			default:
+			// nothing
+		}
+		return true;
+	}
+
+	function eventInit(event: Event):Bool
+	{
+		switch(event.name){
+			case 'Change Character':
+				var cache = new Character(-9000, -9000, event.args[1], event.args[0]=='bf');
+				cache.alpha=1/9999;
+				add(cache);
+				remove(cache);
 			default:
 			// nothing
 		}
@@ -1677,8 +1700,24 @@ class PlayState extends MusicBeatState
 			if(section.events!=null){
 				section.events.sort((a,b)->Std.int(a.time-b.time));
 				for(event in section.events){
-					var shouldSchedule = eventInit(event);
-					if(shouldSchedule)eventSchedule.push(event);
+					if(event.events!=null){
+						var pushingEvents = [];
+						for(ev in event.events){
+							var shouldKeep = eventInit(ev);
+							if(shouldKeep){
+								pushingEvents.push({
+									time: event.time,
+									args: ev.args,
+									name: ev.name
+								});
+							}
+							for(e in pushingEvents)eventSchedule.push(e);
+							//if(shouldSchedule)eventSchedule.push(event);
+						}
+					}else{
+						var shouldSchedule = eventInit(event);
+						if(shouldSchedule)eventSchedule.push(event);
+					}
 				}
 			}
 			for (songNotes in section.sectionNotes)
@@ -1699,7 +1738,7 @@ class PlayState extends MusicBeatState
 					oldNote = null;
 
 				var swagNote:Note = new Note(daStrumTime, daNoteData, currentOptions.noteSkin, noteModifier, EngineData.noteTypes[songNotes[3]], oldNote, false, songNotes[4]==true, getPosFromTime(daStrumTime));
-				swagNote.sustainLength = Math.floor(songNotes[2] / Conductor.stepCrochet) * Conductor.stepCrochet;
+				swagNote.sustainLength = Math.round(songNotes[2] / Conductor.stepCrochet) * Conductor.stepCrochet;
 				swagNote.scrollFactor.set(0, 0);
 				swagNote.shitId = unspawnNotes.length;
 				if(!setupSplashes.contains(swagNote.graphicType) && gottaHitNote){
@@ -1734,8 +1773,8 @@ class PlayState extends MusicBeatState
 
 				unspawnNotes.push(swagNote);
 
-				if(Math.floor(susLength)>0){
-					for (susNote in 0...Math.floor(susLength))
+				if(Math.round(susLength)>0){
+					for (susNote in 0...Math.round(susLength))
 					{
 						oldNote = unspawnNotes[Std.int(unspawnNotes.length - 1)];
 						var sussy = daStrumTime + (Conductor.stepCrochet * susNote) + Conductor.stepCrochet;
@@ -2685,14 +2724,11 @@ class PlayState extends MusicBeatState
 					daNote.updateHitbox();
 
 					if(daNote.isSustainNote){
-							//var prevPos = modManager.getNotePos(daNote.prevNote);
-							//getPath(diff:Float, vDiff:Float, column:Int, player:Int, sprite:FNFSprite)
 							var futureSongPos = Conductor.songPosition + 75;
 							var futureVisualPos = getPosFromTime(futureSongPos);
 
 							var diff =  futureSongPos - daNote.strumTime;
 					    var vDiff = (daNote.initialPos - futureVisualPos);
-							//  var pos = getPath(diff, vDiff, note.noteData, note.mustPress==true?0:1, note);
 
 							var nextPos = modManager.getPath(diff, vDiff, daNote.noteData, daNote.mustPress==true?0:1);
 							nextPos.x += daNote.manualXOffset;
@@ -2711,7 +2747,7 @@ class PlayState extends MusicBeatState
 					scale.put();
 					var visibility:Bool=true;
 
-					if (daNote.y > FlxG.height)
+					if (daNote.y > camNotes.height)
 					{
 						visibility = false;
 					}
@@ -2729,6 +2765,13 @@ class PlayState extends MusicBeatState
 
 					if(daNote.sustainLength > 0 && daNote.wasGoodHit)
 						visibility=false;
+
+					if(daNote.garbage){
+						daNote.visible=false;
+						daNote.active=false;
+						notesToKill.push(daNote);
+						return;
+					}
 
 
 					daNote.visible = visibility;
@@ -2893,7 +2936,12 @@ class PlayState extends MusicBeatState
 							}
 						}
 
-						if((isDownscroll && daNote.y>FlxG.height+daNote.height || !isDownscroll && daNote.y<-daNote.height || (daNote.mustPress && daNote.holdingTime>=daNote.sustainLength || !daNote.mustPress && daNote.unhitTail.length==0 ) && daNote.sustainLength>0 || daNote.isSustainNote && daNote.strumTime - Conductor.songPosition < -350) && (daNote.tooLate || daNote.wasGoodHit))
+						if((
+							isDownscroll && daNote.y>FlxG.height+daNote.height ||
+							!isDownscroll && daNote.y<-daNote.height ||
+							(daNote.mustPress && daNote.holdingTime>=daNote.sustainLength || !daNote.mustPress && daNote.unhitTail.length==0 ) && daNote.sustainLength>0 ||
+							daNote.isSustainNote && daNote.strumTime - Conductor.songPosition < -350 ||
+							!daNote.isSustainNote && (daNote.sustainLength==0 || daNote.tooLate) && daNote.strumTime - Conductor.songPosition < -daNote.gcTime) && (daNote.tooLate || daNote.wasGoodHit))
 							notesToKill.push(daNote);
 
 					}
@@ -2916,7 +2964,10 @@ class PlayState extends MusicBeatState
 		while(eventSchedule[0]!=null){
 			var event = eventSchedule[0];
 			if(Conductor.songPosition >= event.time){
-				doEvent(event);
+				if(event.events!=null && event.events.length>0){
+					for(e in event.events)doEvent(e);
+				}else if(event.events==null)
+					doEvent(event);
 				eventSchedule.shift();
 			}else{
 				break;

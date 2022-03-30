@@ -5,6 +5,7 @@ import flixel.math.FlxPoint;
 import flixel.math.FlxMath;
 import flixel.FlxCamera;
 import math.*;
+import flixel.FlxG;
 
 class CamModifier extends Modifier {
   var prefix:String = "game";
@@ -25,6 +26,9 @@ class CamModifier extends Modifier {
     submods.set(prefix + "YOffset",new Modifier(modMgr));
     submods.set(prefix + "ScrollXOffset",new Modifier(modMgr));
     submods.set(prefix + "ScrollYOffset",new Modifier(modMgr));
+    submods.set(prefix + "AngleOffset",new Modifier(modMgr));
+    submods.set(prefix + "HeightOffset",new Modifier(modMgr));
+    submods.set(prefix + "WidthOffset",new Modifier(modMgr));
   }
 
   override function update(elapsed){
@@ -36,12 +40,16 @@ class CamModifier extends Modifier {
 
     var xScrollOffset = (getSubmodPercent(prefix + "ScrollXOffset",0))*100;
     var yScrollOffset = (getSubmodPercent(prefix + "ScrollYOffset",0))*100;
+    var angleOffset =  (getSubmodPercent(prefix + "AngleOffset",0))*100;
     for(camera in cams){
       var cam:FNFCamera = camera;
       cam.pitch = pitch;
       cam.yaw = yaw;
+      cam.angleOffset = angleOffset;
       cam.offset.set(xOffset,yOffset);
       cam.scrollOffset.set(xScrollOffset,yScrollOffset);
+      cam.height = Math.floor(FlxG.height + (getSubmodPercent(prefix + "HeightOffset",0)*100));
+      cam.width = Math.floor(FlxG.width + (getSubmodPercent(prefix + "WidthOffset",0)*100));
     }
   }
 
