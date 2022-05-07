@@ -83,7 +83,7 @@ class AlphaModifier extends Modifier {
     var alphaMod = 1 - getSubmodPercent("alpha",player) * (1-getSubmodPercent("noteAlpha",player));
     var alpha = getVisibility(yPos,player,note);
 
-    if(getSubmodPercent("useStealthGlow",player)==0){
+    if(getSubmodPercent("dontUseStealthGlow",player)==0){
       note.desiredAlpha = getAlpha(alpha);
       note.effect.setFlash(getGlow(alpha));
     }else{
@@ -99,11 +99,6 @@ class AlphaModifier extends Modifier {
     }
     receptor.alpha = alpha;
 
-  }
-
-  override function update(elapsed:Float){
-    FlxG.watch.addQuick("hiddenStart", getHiddenStart(0));
-    FlxG.watch.addQuick("hiddenEnd", getHiddenEnd(0));
   }
 
   override function getSubmods(){
